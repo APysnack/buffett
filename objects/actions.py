@@ -1,3 +1,4 @@
+from objects import portfolio
 import state
 
 
@@ -7,20 +8,26 @@ class Actions:
         self.possibleStocks = possibleStocks
 
     def buy(self, stock):
-        self.currentState.cash = self.currentState.cash - stock.price
-        self.currentState.portfolio.addStockToPortfolio(stock)
-        self.currentState.aggregateRisk = self.currentState.aggregateRisk + stock.risk
+        numShares = 1
+        self.currentState.buy(stock, numShares)
 
-    def sell(self, stock):
-        pass
+    def sell(self, indexToSell, numShares):
+        self.currentState.sell(indexToSell, numShares)
 
     def hold(self, stock):
         pass
 
     def getNextAction(self):
         stockToBuy = self.possibleStocks[0]
-        print(f"buy {stockToBuy.tickerName}")
         for stock in self.possibleStocks:
             if stock.risk < stockToBuy.risk:
                 stockToBuy = stock
-        self.buy(stock)
+        print(f"buy {stockToBuy.tickerName}")
+        self.buy(stockToBuy)
+
+    # sell all shares of input stock e.g. sell all shares of AAPL
+    def sellAll(self, stock):
+        numShares = 1
+        indexToSell = next((i for i, item in enumerate(
+            self.currentState.portfolio.stockList) if item["stockObj"].tickerName == stock.tickerName), None)
+        self.sell(indexToSell, numShares)

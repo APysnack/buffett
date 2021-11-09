@@ -13,17 +13,27 @@ class Stock:
 
         # current price deviation
         # mean is calculated from only a few sampled points over the last year
+        # large (positive) z-scores represent heavily sold entities
         self.z_score = None
 
         # today's average price
         self.price = None
 
         # short term momentum data
+        # values > 1, risk goes down
+        # values < 1, risk goes up
         self.week_to_day3_momentum = None
         self.day3_to_day2_momentum = None
         self.day3_to_day1_momentum = None
         self.day2_to_day1_momentum = None
         self.day1_to_day0_momentum = None
+
+        # amount expected to be returned from investment
+        self.expectedReturn = None
+
+        # adjustable value for calculating the expected return from a stock
+        # expectedReturn = (formula price * z_score) / variableRate
+        self.variableRate = 20
 
     def setTickerName(self, tickerName):
         self.tickerName = tickerName
@@ -33,8 +43,8 @@ class Stock:
         self.employees = numEmployees
 
     def __str__(self):
-        output = "[Name: {}], [5 year: {}], [1 year: {}], [9 month: {}], [6 month: {}], [3 month: {}], [1 month: {}], [1 week: {}], [Back_3d: {}], [Back_2d: {}], [Back_1d: {}], [today's high: {}]".format(
-            self.tickerName, self.back_5y, self.back_1y, self.back_9m, self.back_6m, self.back_3m, self.back_1m, self.back_1w, self.back_3d_high, self.back_2d_high, self.yesterday_high, self.today_high)
+        output = "[Name: {}], [5 year: {}], [1 year: {}], [9 month: {}], [6 month: {}], [3 month: {}], [1 month: {}], [1 week: {}], [Back_3d: {}], [Back_2d: {}], [Back_1d: {}], [today's price: {}], [Risk: {}], [Z-Score: {}], [Expected Return: {}]\n\n".format(
+            self.tickerName, self.back_5y, self.back_1y, self.back_9m, self.back_6m, self.back_3m, self.back_1m, self.back_1w, self.back_3d_high, self.back_2d_high, self.yesterday_high, self.price, self.risk, self.z_score, self.expectedReturn)
         return output
 
     def setDateValues(self, index, high, low):
@@ -139,8 +149,6 @@ class Stock:
         return std
 
     def set_momentum(self):
-        # values > 1, risk goes down
-        # values < 1, risk goes up
         self.week_to_day3_momentum = self.back_3d_avg / self.back_1w
         self.day3_to_day2_momentum = self.back_2d_avg / self.back_3d_avg
         self.day3_to_day1_momentum = self.yesterday_avg / self.back_3d_avg
@@ -148,41 +156,37 @@ class Stock:
         self.day1_to_day0_momentum = self.today_avg / self.yesterday_avg
 
     def set_Z_Score(self):
-        if(int(self.back_1y) > 0):
-            numList = [self.back_1y, self.back_9m, self.back_6m, self.back_3m, self.back_1m,
-                       self.back_1w, self.back_3d_high, self.back_3d_low]
-            n = len(numList)
-            mean = self.getMean(numList, n)
-            std = self.getStd(numList, n, mean)
+        numList = []
+        if(int(self.back_1y) > 0.5):
+            numList.append(self.back_1y)
+        if(int(self.back_9m) > 0.5):
+            numList.append(self.back_9m)
+        if(int(self.back_6m) > 0.5):
+            numList.append(self.back_6m)
+        if(int(self.back_3m) > 0.5):
+            numList.append(self.back_3m)
+        if(int(self.back_1m) > 0.5):
+            numList.append(self.back_1m)
+        if(int(self.back_1w > 0.5)):
+            numList.append(self.back_1w)
+        if(int(self.back_1w) > 0.5):
+            numList.append(self.back_3d_high)
+        if(int(self.back_3d_low) > 0.5):
+            numList.append(self.back_3d_low)
 
-        elif (int(self.back_9m) > 0):
-            numList = [self.back_9m, self.back_6m, self.back_3m, self.back_1m,
-                       self.back_1w, self.back_3d_high, self.back_3d_low]
-            n = len(numList)
-            mean = self.getMean(numList, n)
-            std = self.getStd(numList, n, mean)
+        n = len(numList)
 
-        elif (int(self.back_6m) > 0):
-            numList = [self.back_6m, self.back_3m, self.back_1m,
-                       self.back_1w, self.back_3d_high, self.back_3d_low]
-            n = len(numList)
-            mean = self.getMean(numList, n)
-            std = self.getStd(numList, n, mean)
-
-        elif (int(self.back_3m) > 0):
-            numList = [self.back_3m, self.back_1m,
-                       self.back_1w, self.back_3d_high, self.back_3d_low]
-            n = len(numList)
-            mean = self.getMean(numList, n)
-            std = self.getStd(numList, n, mean)
+        if n > 1:
+            self.mean = self.getMean(numList, n)
+            self.std = self.getStd(numList, n, self.mean)
         else:
-            mean = 0
-            std = 0
+            self.mean = 0
+            self.std = 0
 
-        self.mean = mean
-        self.std = std
-
-        if(mean == 0 or std == 0):
+        if(self.mean == 0 or self.std == 0):
             self.z_score = 0
+            self.expectedReturn = 0
         else:
-            self.z_score = (self.today_low - mean) / std
+            self.z_score = (self.today_avg - self.mean) / self.std
+            self.expectedReturn = (
+                self.today_avg * self.z_score) / self.variableRate

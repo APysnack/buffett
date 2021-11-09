@@ -4,9 +4,9 @@ from state import State
 
 
 class Agent:
-    def __init__(self, name, cash, stockList):
+    def __init__(self, name, startingCash, stockList):
         self.name = name
-        self.currentState = State(cash, 0, 0)
+        self.currentState = State(startingCash)
         self.lastState = self.currentState
         self.possibleStocks = stockList
 
@@ -16,3 +16,7 @@ class Agent:
 
     def reportState(self):
         print(self.currentState)
+
+    def sellAll(self, stock):
+        actionChoices = Actions(self.currentState, self.possibleStocks)
+        actionChoices.sellAll(stock)
