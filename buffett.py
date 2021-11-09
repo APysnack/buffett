@@ -1,5 +1,4 @@
 import sys
-sys.path.append('C:/Users/purle/OneDrive/Desktop/buffett/objects')
 import yfinance as yf
 import datetime
 from objects.stock import Stock
