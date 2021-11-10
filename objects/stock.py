@@ -8,7 +8,7 @@ class Stock:
         # primary object variables
         self.tickerName = None
 
-        # speculative risk value
+        # speculative risk value, high values are higher risk
         self.risk = None
 
         # current price deviation
@@ -190,3 +190,20 @@ class Stock:
             self.z_score = (self.today_avg - self.mean) / self.std
             self.expectedReturn = (
                 self.today_avg * self.z_score) / self.variableRate
+
+    def setCustomValues(self, tickerName, back_5y, back_1y, back_9m, back_6m, back_3m, back_1m, back_1w, back_3d_high, back_2d_high, yesterday_high, price, risk, z_score, expectedReturn):
+        self.tickerName = tickerName
+        self.back_5y = back_5y
+        self.back_1y = back_1y
+        self.back_9m = back_9m
+        self.back_6m = back_6m
+        self.back_3m = back_3m
+        self.back_1m = back_1m
+        self.back_1w = back_1w
+        self.back_3d_high = back_3d_high
+        self.back_2d_high = back_2d_high
+        self.yesterday_high = yesterday_high
+        self.price = price
+        self.risk = risk
+        self.z_score = z_score
+        self.expectedReturn = expectedReturn

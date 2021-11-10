@@ -12,11 +12,26 @@ class Agent:
 
     def assessActions(self):
         actionChoices = Actions(self.currentState, self.possibleStocks)
-        actionToTake = actionChoices.getNextAction()
+        action, stockForAction, numShares = actionChoices.getNextAction()
+
+        if(action == 1):
+            self.buy(stockForAction, numShares)
+        elif(action == -1):
+            self.sell(stockForAction, numShares)
+        else:
+            pass
 
     def reportState(self):
         print(self.currentState)
 
-    def sellAll(self, stock):
-        actionChoices = Actions(self.currentState, self.possibleStocks)
-        actionChoices.sellAll(stock)
+    def sell(self, stock, numShares):
+        sellPrice = stock.price
+        indexToSell = next((i for i, item in enumerate(
+            self.currentState.portfolio.stockList) if item["stockObj"].tickerName == stock.tickerName), None)
+        self.currentState.sell(indexToSell, numShares, sellPrice)
+
+    def buy(self, stock, numShares):
+        if(stock.price * numShares) < self.currentState.cash:
+            self.currentState.buy(stock, numShares)
+        else:
+            print("Error: not enough cash to buy")
