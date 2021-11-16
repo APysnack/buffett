@@ -1,6 +1,7 @@
 import datetime as dt
 
-FPATH = "C:\\Users\\purle\\Documents\\stocks\\"
+# set FPATH to your directory of stocks
+FPATH = None
 PATH2015 = FPATH + '\\2015\\'
 PATH2016 = FPATH + '\\2016\\'
 PATH2017 = FPATH + '\\2017\\'
