@@ -8,6 +8,13 @@ yfinance = "*"
 pandas = "*"
 numpy = "*"
 xlsxwriter = "*"
+tensorflow = "*"
+pandas-datareader = "*"
+matplotlib = "*"
+mplfinance = "*"
+arff = "*"
+sklearn = "*"
+torch = "*"
 
 [dev-packages]
 

@@ -1,91 +1,198 @@
+import os
+from os import listdir, path
+from os.path import isfile, join
 import sys
 import yfinance as yf
+import tensorflow as tf
+from tensorflow import keras
+import numpy as np
+import torch
+import pandas as pd
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+import datetime as dt
+import mplfinance as mpf
+import csv
+from sklearn.model_selection import train_test_split
 from utils.utils import *
+from extra.definitions import *
 from extra.individual import individualReport
-from objects.stock import Stock
-from objects.agent import Agent
-from objects.state import State
-from objects.actions import Actions
-
-tickerList = ["VOO", "AAPL", "AMZN", "NFLX", "ROST", "NVDA"]
-
-# NOTE: momentum data still required
 
 
-def initializeDummyData():
-    stock1 = Stock()
-    stock2 = Stock()
-    stock3 = Stock()
-    stock4 = Stock()
-    stock5 = Stock()
-    stock6 = Stock()
+# only used for testing/debugging: random list of tickers that have records for 2017, 2018, and 2019
+truncated_tickers = ['UVSP', 'TCBK', 'ITCI', 'CENTA', 'CZR', 'EMN', 'KTCC', 'TREX', 'DPZ', 'TRMB', 'AEY', 'IO', 'ONVO', 'UNB', 'ASTC', 'SYN', 'CHGG', 'ZDGE', 'KDMN', 'PACW', 'ENPH', 'YUM', 'BBGI', 'INSG', 'ABIO', 'SNBR', 'PGRE', 'ZYXI', 'MBI', 'SNOA', 'SCVL', 'RCKT', 'BMRN', 'LKFN', 'IT', 'VKTX', 'PCRX', 'SNPS', 'ISRG', 'CMI', 'WMK', 'SMBC', 'GILD', 'IBTX', 'IBOC', 'MICT', 'LIND', 'SLG', 'GTN', 'BLD', 'CASI', 'DBD', 'CSU', 'APAM', 'PGTI', 'BAH', 'TUP', 'EFX', 'HSII', 'NCR', 'G', 'RDN', 'CIDM', 'ASTE', 'MCFT', 'RYN', 'SCL', 'OPTT', 'OFG',
+                     'OFC', 'PBHC', 'SBNY', 'EXTN', 'OFLX', 'SELB', 'GROW', 'SUP', 'KAR', 'PHIO', 'RBB', 'ASIX', 'BUSE', 'JELD', 'LBAI', 'XENT', 'HROW', 'TBPH', 'APRN', 'SCYX', 'OGE', 'LRCX', 'BAND', 'CIA', 'HMHC', 'RPT', 'BHLB', 'SNAP', 'WM', 'SGRY', 'IDT', 'NEE', 'SHAK', 'GWB', 'ED', 'MTOR', 'ACLS', 'CHTR', 'POR', 'PPG', 'CATC', 'UFCS', 'TJX', 'GBL', 'CNXN', 'ILMN', 'NSC', 'PCYO', 'IP', 'CYCC', 'APT', 'IQV', 'R', 'PDEX', 'PPL', 'BFIN', 'WVVI', 'CTG', 'SEB', 'DE', 'PK', 'BDX', 'PLSE', 'WRB', 'IHC', 'INGN', 'WHR', 'POWL', 'PANL', 'SAFT', 'AMNB', 'OCC']
 
-    stock1.setCustomValues("NFLX", 57.05000114440918, 351.4049987792969, 370.1750030517578, 273.6699981689453, 362.51499938964844, 371.84999084472656,
-                           348.9100036621094, 357.4200134277344, 359.44000244140625, 361.20001220703125, 349.875, 1.7047961645994651, 0.06114556444981186, 1.0696652180938961)
 
-    stock2.setCustomValues("VOO", 152.7884708040724, 232.33375819774386, 251.7055273590439, 236.3839015441721, 244.79246748159932, 258.53520303163407, 250.03982503516852,
-                           249.11555082892957, 249.96798773052964, 249.93922873415227, 244.52783128435908, 0.738041458058553, -0.20005707583905138, -2.4459761444006896)
+def get_ticker_list():
+    tickers = []
+    files = [x for x in listdir(TEST2017) if isfile(join(TEST2017, x))]
+    tickers_2017 = [os.path.splitext(x)[0] for x in files]
 
-    stock3.setCustomValues("AAPL", 20.080105592270208, 45.26319581638896, 54.49617236034237, 43.22628914586592, 42.46720892979325, 49.94499818407954, 44.607715828347814,
-                           44.17341362132984, 44.564891724447676, 44.185653446037584, 43.472431641267804, 0.7148401274854206, -0.6010641347049844, -1.306485975399011)
+    files = [x for x in listdir(TEST2018) if isfile(join(TEST2018, x))]
+    tickers_2018 = [os.path.splitext(x)[0] for x in files]
 
-    stock4.setCustomValues("AMZN", 310.62001037597656, 1610.9700317382812, 2006.2349853515625, 1641.3349609375, 1628.0599975585938, 1945.2149658203125,
-                           1851.6600341796875, 1844.0, 1841.760009765625, 1849.27001953125, 1818.7650146484375, 1.5528161924697885, 0.18167501508472786, 16.52120807359151)
+    files = [x for x in listdir(TEST2019) if isfile(join(TEST2019, x))]
+    tickers_2019 = [os.path.splitext(x)[0] for x in files]
 
-    stock5.setCustomValues("NVDA", 4.506433644148066, 61.768578780221134, 69.24782727745472, 38.89142354390313, 39.315400536629184, 44.26001356131365,
-                           37.989375202446496, 37.22591430477684, 37.17865900836264, 36.60170963117244, 35.03497727580039, 2.3148425848936225, -0.8322165672708406, -1.457834426143925)
+    for ticker in tickers_2019:
+        if (ticker in tickers_2018):
+            if (ticker in tickers_2017):
+                tickers.append(ticker)
 
-    stock6.setCustomValues("ROST", 31.764470347691677, 75.02976134702209, 93.17202772817777, 82.95335567125784, 92.3398033617815, 97.2675696849025, 95.30698810406818,
-                           93.30218285129722, 92.37840596799897, 93.9999223695455, 89.07635275342827, 0.900450177955308, -0.13426369628096538, -0.5979860185951213)
+    return tickers
 
-    stockList.append(stock1)
-    stockList.append(stock2)
-    stockList.append(stock3)
-    stockList.append(stock4)
-    stockList.append(stock5)
-    stockList.append(stock6)
+
+def initialize_stocks(path, prev_path, prev_s_date, prev_e_date, first_iter, tickers):
+    good_tickers = []
+    for ticker in tickers:
+        print("Working on: ", ticker)
+        prev_df = get_df_from_csv(prev_path, ticker)
+        stock_df = get_df_from_csv(path, ticker)
+        s_date1, e_date1 = format_date_str(prev_s_date, prev_e_date)
+        beginning, end = get_valid_dates(prev_df, s_date1, e_date1)
+        roi = get_roi_between_dates(prev_df, beginning, end)
+        if(first_iter is False or roi > 0):
+            if(first_iter is True):
+                good_tickers.append(ticker)
+            mean = get_mean_between_dates(prev_df, beginning, end)
+            std = get_std_between_dates(prev_df, beginning, end)
+            cov = get_cov_between_dates(prev_df, beginning, end)
+            add_col_to_df(stock_df, path,
+                          f'{ticker}_appended', 'prev_year_roi', roi)
+            add_col_to_df(stock_df, path,
+                          f'{ticker}_appended', 'prev_year_mean', mean)
+            add_col_to_df(stock_df, path,
+                          f'{ticker}_appended', 'prev_year_std', std)
+            add_col_to_df(stock_df, path,
+                          f'{ticker}_appended', 'prev_year_cov', cov)
+            add_daily_return_to_df(
+                stock_df, path, f'{ticker}_appended', '1d_return', -1)
+            add_daily_return_to_df(
+                stock_df, path, f'{ticker}_appended', '2d_return', -2)
+            add_daily_return_to_df(
+                stock_df, path, f'{ticker}_appended', '3d_return', -3)
+            add_z_score_to_df(stock_df, path, f'{ticker}_appended')
+            add_prev_z_to_df(stock_df, path, f'{ticker}_appended',
+                             'yesterday_z', 'z_score', 1)
+            add_prev_z_to_df(stock_df, path, f'{ticker}_appended',
+                             '2_days_back_z', 'z_score', 2)
+            add_prev_z_to_df(stock_df, path, f'{ticker}_appended',
+                             '3_days_back_z', 'z_score', 3)
+            add_momentum_to_df(stock_df, path, f'{ticker}_appended')
+            delete_unnamed_cols(stock_df)
+            save_df_to_csv(stock_df, path, f'{ticker}_appended')
+    return good_tickers
+
+
+def download_stocks_to_csv():
+    # DOWNLOAD STOCKS FROM YAHOO - NEED TO CONTINUE FROM 500 for 2015
+    tickers = get_column_from_csv(FPATH + "Wilshire-5000-Stocks.csv", "Ticker")
+    folder = PATH2016
+    for i in range(1, 3481):
+        save_to_csv_from_yahoo(
+            folder, tickers[i], S_YEAR0, S_MONTH0, S_DAY0, E_YEAR0, E_MONTH0, E_DAY0)
+
+
+def preprocess_data(path_to_data, tickers):
+    b_threshold = 0.04
+
+    for ticker in tickers:
+        df = get_df_from_csv(path_to_data, f'{ticker}_appended')
+        df = delete_unnamed_cols(df)
+        df.drop(df.columns[[0, 1, 2, 3, 4, 5, 6, 8, 9, 15, 16, 17]],
+                axis=1, inplace=True)
+
+        classArray = []
+
+        for i, value in enumerate(df['1d_return']):
+            if(value > b_threshold or df['2d_return'][i] > b_threshold or df['3d_return'][i] > b_threshold):
+                classArray.append('\'buy\'')
+            else:
+                classArray.append('\'dbuy\'')
+        df['classification'] = classArray
+        df.drop(df.columns[[2, 3, 4]], axis=1, inplace=True)
+        df.drop(labels=[0, 1, 2], axis=0, inplace=True)
+        save_df_to_csv_without_index(
+            df, path_to_data, f'{ticker}_preprocessed')
+
+
+def compile_data(path_to_data, fname, tickers):
+    small_dfs = []
+    for ticker in tickers:
+        df = get_df_from_csv(path_to_data, f'{ticker}_preprocessed')
+        df = delete_unnamed_cols(df)
+        small_dfs.append(df)
+
+    market_df = pd.concat(small_dfs, ignore_index=True)
+    save_df_to_csv_without_index(market_df, path_to_data, fname)
+
+
+def get_data_for_model(path_to_file):
+    with open(path_to_file) as f:
+        reader = csv.reader(f)
+        next(reader)
+
+        data = []
+        for row in reader:
+            data.append({
+                "evidence": [float(cell) for cell in row[:6]],
+                "label": 1 if row[6] == "\'buy\'" else 0
+            })
+
+    out_data = [row["evidence"] for row in data]
+    out_labels = [row["label"] for row in data]
+    return out_data, out_labels
 
 
 if __name__ == "__main__":
-    # val = int(input("Options:\n1. Individual Stock Report\n2. Stock Analysis\n"))
-    # if(val == 1):
-    #     individualReport()
-    # else:
-    # commented out and using hardcoded stock vals for debugging, retrieves real stock data
-    # stockAnalysis(tickerList)
-    initializeDummyData()
-    # initializes agent with name, starting cash, list of stock data
-    buffett = Agent("buffett", 2000, stockList)
-    testStock = Stock()
-    testStock2 = Stock()
-    testStock3 = Stock()
-    testStock.setCustomValues("NFLX", 57.05000114440918, 351.4049987792969, 370.1750030517578, 273.6699981689453, 362.51499938964844, 371.84999084472656,
-                              348.9100036621094, 357.4200134277344, 359.44000244140625, 361.20001220703125, 349.875, 1.7047961645994651, 0.06114556444981186, 1.0696652180938961)
+    val = int(input(
+        "What would you like to do?\n1. Individual Report\n2. Generate Neural Network Model from Stock Data\n"))
+    if (val == 1 or val == 2):
+        if(val == 1):
+            individualReport()
+        else:
+            all_tickers = get_ticker_list()
+            # download_stocks_to_csv()
+            # initializes stock data and adds necessary cols for 2018 to ready for preprocessing
+            good_tickers = initialize_stocks(
+                PATHYEAR2, PATHYEAR1, S_DATE_STR1, E_DATE_STR1, True, all_tickers)
 
-    testStock2.setCustomValues("AAPL", 20.080105592270208, 45.26319581638896, 54.49617236034237, 43.22628914586592, 42.46720892979325, 49.94499818407954, 44.607715828347814,
-                               44.17341362132984, 44.564891724447676, 44.185653446037584, 43.472431641267804, 0.7148401274854206, -0.6010641347049844, -1.306485975399011)
+            # initializes stock data and adds necessary cols for 2019 to ready for preprocessing
+            initialize_stocks(PATHYEAR3, PATHYEAR2, S_DATE_STR2,
+                              E_DATE_STR2, False, good_tickers)
 
-    testStock3.setCustomValues("NVDA", 4.506433644148066, 61.768578780221134, 69.24782727745472, 38.89142354390313, 39.315400536629184, 44.26001356131365,
-                               37.989375202446496, 37.22591430477684, 37.17865900836264, 36.60170963117244, 35.03497727580039, 2.3148425848936225, -0.8322165672708406, -1.457834426143925)
+            # filters out unnecessary columns and retains values to be used for training/testing
+            preprocess_data(PATHYEAR2, good_tickers)
+            preprocess_data(PATHYEAR3, good_tickers)
 
-    buffett.buy(testStock, 3)
-    buffett.buy(testStock2, 5)
-    buffett.buy(testStock3, 2)
-    # report new state after decision
-    buffett.reportState()
+            compile_data(PATHYEAR2, 'market_2018', good_tickers)
+            compile_data(PATHYEAR3, 'market_2019', good_tickers)
 
-    applesUp = Stock()
-    nfxUp = Stock()
-    nvdaUp = Stock()
+            path_to_file = f'{PATHYEAR2}\\market_2018.csv'
+            training_data_2018, training_labels_2018 = get_data_for_model(
+                path_to_file)
+            path_to_file = f'{PATHYEAR3}\\market_2019.csv'
+            testing_data_2019, testing_labels_2019 = get_data_for_model(
+                path_to_file)
 
-    applesUp.setCustomValues("AAPL", 20.080105592270208, 45.26319581638896, 54.49617236034237, 43.22628914586592, 42.46720892979325, 49.94499818407954, 44.607715828347814,
-                             44.17341362132984, 44.564891724447676, 44.185653446037584, 63.472431641267804, 0.7148401274854206, -0.6010641347049844, -1.306485975399011)
-    nfxUp.setCustomValues("NFLX", 57.05000114440918, 351.4049987792969, 370.1750030517578, 273.6699981689453, 362.51499938964844, 371.84999084472656,
-                          348.9100036621094, 357.4200134277344, 359.44000244140625, 361.20001220703125, 349.875, 1.7047961645994651, 0.06114556444981186, 1.0696652180938961)
-    nvdaUp.setCustomValues("NVDA", 4.506433644148066, 61.768578780221134, 69.24782727745472, 38.89142354390313, 39.315400536629184, 44.26001356131365,
-                           37.989375202446496, 37.22591430477684, 37.17865900836264, 36.60170963117244, 35.03497727580039, 2.3148425848936225, -0.8322165672708406, -1.457834426143925)
+            model = tf.keras.models.Sequential()
+            model.add(tf.keras.layers.Dense(
+                16, input_shape=(6,), activation="relu"))
+            model.add(tf.keras.layers.Dense(1, activation="sigmoid"))
 
-    buffett.sell(applesUp, 5)
-    buffett.sell(nfxUp, 3)
-    buffett.sell(nvdaUp, 2)
-    buffett.reportState()
+            model.compile(optimizer="adam", loss="binary_crossentropy",
+                          metrics=["TruePositives", "TrueNegatives", "FalsePositives", "FalseNegatives"])
+            model.fit(training_data_2018, training_labels_2018, epochs=7)
+            model.evaluate(testing_data_2019, testing_labels_2019, verbose=2)
+
+            model.save('first_model.model')
+            new_model = tf.keras.models.load_model('first_model.model')
+
+            # csv_to_arff(f'C:\\Users\\purle\\Documents\\stocks\\test\\2018\\market_2018.csv',
+            #             f'C:\\Users\\purle\\Documents\\stocks\\test\\2018\\market_2018.arff', '2018_Stock_Market')
+
+            # csv_to_arff(f'C:\\Users\\purle\\Documents\\stocks\\test\\2019\\market_2019.csv',
+            #             f'C:\\Users\\purle\\Documents\\stocks\\test\\2019\\market_2019.arff', '2019_Stock_Market')
+    else:
+        print("Error with input")
